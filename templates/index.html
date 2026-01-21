@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battaglia Navale</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e5799 0%,#207cca 44%,#2989d8 72%,#7db9e8 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .menu {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px auto;
+            max-width: 400px;
+        }
+
+        .menu button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 15px;
+            font-size: 18px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .menu button:hover {
+            background: #45a049;
+        }
+
+        .game-container {
+            display: none;
+        }
+
+        .grids-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .grid {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .grid-row {
+            display: flex;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .cell:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .ship {
+            background-color: #4CAF50;
+            position: relative;
+        }
+
+        .ship::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M20,4h-1V3c0-0.6-0.4-1-1-1H6C5.4,2,5,2.4,5,3v1H4C3.4,4,3,4.4,3,5v14c0,0.6,0.4,1,1,1h16c0.6,0,1-0.4,1-1V5C21,4.4,20.6,4,20,4z M7,4h10v1H7V4z M19,18H5V6h14V18z"/></svg>');
+            background-size: 70%;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.7;
+        }
+
+        .hit {
+            background-color: #f44336 !important;
+        }
+
+        .miss {
+            background-color: #2196F3 !important;
+        }
+
+        .hit::after {
+            content: '×';
+            font-size: 30px;
+            color: white;
+        }
+
+        .miss::after {
+            content: '○';
+            font-size: 20px;
+            color: white;
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .message {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .error-message {
+            color: #ff4444;
+            font-weight: bold;
+            animation: fadeIn 0.5s;
+        }
+
+        .sunk-message {
+            color: #ff4444;
+            font-weight: bold;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .next-phase-button {
+            display: none;
+            margin: 20px auto;
+            padding: 15px 30px;
+            font-size: 18px;
+        }
+
+        .orientation-toggle {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Battaglia Navale</h1>
+        
+        <!-- Menu Principale -->
+        <div id="mainMenu" class="menu">
+            <h2>Scegli la Modalità di Gioco</h2>
+            <button onclick="startGameMode('bot')">Gioca contro il Computer</button>
+            <button onclick="startGameMode('player')">Gioca contro un Amico</button>
+        </div>
+
+        <!-- Contenitore del Gioco -->
+        <div id="gameContainer" class="game-container">
+            <div class="controls">
+                <button onclick="returnToMenu()">Torna al Menu</button>
+                <div class="orientation-toggle">
+                    <button onclick="toggleOrientation()">Cambia Orientamento Nave</button>
+                    <div id="currentOrientation">Orientamento attuale: Orizzontale</div>
+                </div>
+            </div>
+            <div class="message" id="messageBox"></div>
+            <button id="nextPhaseButton" class="next-phase-button" onclick="startNextPhase()">Continua</button>
+            <div class="grids-container">
+                <div class="grid">
+                    <h2 id="leftGridTitle">La tua griglia</h2>
+                    <div id="playerGrid"></div>
+                </div>
+                <div class="grid">
+                    <h2 id="rightGridTitle">Griglia avversaria</h2>
+                    <div id="enemyGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameMode = 'bot';
+        let currentPlayer = 1;
+        let setupPhase = true;
+        let selectedShipLength = 4;
+        let shipsToPlace = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+        let playerShips = [];
+        let enemyShips = [];
+        let playerGrid = [];
+        let enemyGrid = [];
+        let player2SetupComplete = false;
+        let isHorizontal = true;
+        const GRID_SIZE = 10;
+
+        function toggleOrientation() {
+            isHorizontal = !isHorizontal;
+            document.getElementById('currentOrientation').textContent = 
+                'Orientamento attuale: ' + (isHorizontal ? 'Orizzontale' : 'Verticale');
+        }
+
+        function startGameMode(mode) {
+            gameMode = mode;
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            startGame();
+        }
+
+        function returnToMenu() {
+            document.getElementById('gameContainer').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'block';
+            document.getElementById('nextPhaseButton').style.display = 'none';
+        }
+
+        function createGrid(containerId, isEnemy) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            const grid = [];
+
+            for (let i = 0; i < GRID_SIZE; i++) {
+                const row = document.createElement('div');
+                row.className = 'grid-row';
+                const gridRow = [];
+
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.onclick = () => handleCellClick(i, j, isEnemy);
+                    row.appendChild(cell);
+                    gridRow.push({
+                        hasShip: false,
+                        isHit: false,
+                        element: cell
+                    });
+                }
+
+                container.appendChild(row);
+                grid.push(gridRow);
+            }
+
+            return grid;
+        }
+
+        function startGame() {
+            playerGrid = createGrid('playerGrid', false);
+            enemyGrid = createGrid('enemyGrid', true);
+            setupPhase = true;
+            player2SetupComplete = false;
+            shipsToPlace = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+            playerShips = [];
+            enemyShips = [];
+            currentPlayer = 1;
+            isHorizontal = true;
+            document.getElementById('currentOrientation').textContent = 'Orientamento attuale: Orizzontale';
+
+            if (gameMode === 'bot') {
+                document.getElementById('leftGridTitle').textContent = 'La tua griglia';
+                document.getElementById('rightGridTitle').textContent = 'Griglia del bot';
+                updateMessage('Posiziona le tue navi - Nave di lunghezza ' + shipsToPlace[0]);
+                placeEnemyShips();
+            } else {
+                document.getElementById('leftGridTitle').textContent = 'Griglia Giocatore 1';
+                document.getElementById('rightGridTitle').textContent = 'Griglia Giocatore 2';
+                updateMessage('Giocatore 1: Posiziona le tue navi - Nave di lunghezza ' + shipsToPlace[0]);
+            }
+        }
+
+        function startNextPhase() {
+            if (gameMode === 'player' && !player2SetupComplete) {
+                updateMessage('Giocatore 2: Posiziona le tue navi - Nave di lunghezza ' + shipsToPlace[0]);
+                document.getElementById('nextPhaseButton').style.display = 'none';
+                setupPhase = true;
+                player2SetupComplete = true;
+                updateShipVisibility();
+            }
+        }
+
+        function updateShipVisibility() {
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    const cell = playerGrid[i][j];
+                    const enemyCell = enemyGrid[i][j];
+
+                    cell.element.classList.remove('ship');
+                    enemyCell.element.classList.remove('ship');
+
+                    if (gameMode === 'bot') {
+                        if (cell.hasShip) {
+                            cell.element.classList.add('ship');
+                        }
+                        if (enemyCell.hasShip && enemyCell.isHit) {
+                            enemyCell.element.classList.add('ship');
+                        }
+                    } else {
+                        if (setupPhase) {
+                            if (!player2SetupComplete && cell.hasShip) {
+                                cell.element.classList.add('ship');
+                            } else if (player2SetupComplete && enemyCell.hasShip) {
+                                enemyCell.element.classList.add('ship');
+                            }
+                        } else {
+                            if (cell.hasShip && cell.isHit) {
+                                cell.element.classList.add('ship');
+                            }
+                            if (enemyCell.hasShip && enemyCell.isHit) {
+                                enemyCell.element.classList.add('ship');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function handleCellClick(row, col, isEnemy) {
+            if (setupPhase) {
+                if (gameMode === 'bot' && !isEnemy) {
+                    placePlayerShip(row, col, playerGrid);
+                } else if (gameMode === 'player') {
+                    if (!player2SetupComplete && !isEnemy) {
+                        placePlayerShip(row, col, playerGrid);
+                    } else if (player2SetupComplete && isEnemy) {
+                        placePlayerShip(row, col, enemyGrid);
+                    }
+                }
+            } else {
+                if (gameMode === 'bot') {
+                    if (currentPlayer === 1 && isEnemy) {
+                        makeMove(row, col);
+                    }
+                } else {
+                    if ((currentPlayer === 1 && isEnemy) || (currentPlayer === 2 && !isEnemy)) {
+                        makeMove(row, col);
+                    }
+                }
+            }
+        }
+
+        function showErrorMessage(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.textContent = message;
+            errorDiv.className = 'error-message';
+            document.getElementById('messageBox').appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 2000);
+        }
+
+        function placePlayerShip(row, col, grid) {
+            if (shipsToPlace.length === 0) return;
+
+            const shipLength = shipsToPlace[0];
+            if (canPlaceShip(grid, row, col, shipLength, isHorizontal)) {
+                placeShip(grid, row, col, shipLength, isHorizontal);
+                if (grid === playerGrid) {
+                    playerShips.push({row, col, length: shipLength, horizontal: isHorizontal, hits: 0});
+                } else {
+                    enemyShips.push({row, col, length: shipLength, horizontal: isHorizontal, hits: 0});
+                }
+                shipsToPlace.shift();
+
+                if (shipsToPlace.length > 0) {
+                    updateMessage(`${gameMode === 'player' ? 'Giocatore ' + (player2SetupComplete ? '2' : '1') + ': ' : ''}Posiziona la nave di lunghezza ` + shipsToPlace[0]);
+                } else {
+                    setupPhase = false;
+                    if (gameMode === 'bot') {
+                        updateMessage('Inizia il gioco! È il tuo turno.');
+                    } else if (!player2SetupComplete) {
+                        document.getElementById('nextPhaseButton').style.display = 'block';
+                        updateMessage('Giocatore 1 ha completato il posizionamento. Premi Continua per il turno del Giocatore 2.');
+                        shipsToPlace = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+                    } else {
+                        updateMessage('Inizia il gioco! Turno del Giocatore 1');
+                    }
+                    updateShipVisibility();
+                }
+            } else {
+                showErrorMessage("Non puoi posizionare la nave qui! Riprova in un'altra posizione.");
+            }
+        }
+
+        function placeEnemyShips() {
+            const enemyShipLengths = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+            for (const length of enemyShipLengths) {
+                let placed = false;
+                while (!placed) {
+                    const row = Math.floor(Math.random() * GRID_SIZE);
+                    const col = Math.floor(Math.random() * GRID_SIZE);
+                    const horizontal = Math.random() < 0.5;
+
+                    if (canPlaceShip(enemyGrid, row, col, length, horizontal)) {
+                        placeShip(enemyGrid, row, col, length, horizontal);
+                        enemyShips.push({row, col, length, horizontal, hits: 0});
+                        placed = true;
+                    }
+                }
+            }
+            updateShipVisibility();
+        }
+
+        function canPlaceShip(grid, row, col, length, horizontal) {
+            if (horizontal) {
+                if (col + length > GRID_SIZE) return false;
+                for (let i = -1; i <= length; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        const newRow = row + j;
+                        const newCol = col + i;
+                        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE) {
+                            if (grid[newRow][newCol].hasShip) return false;
+                        }
+                    }
+                }
+            } else {
+                if (row + length > GRID_SIZE) return false;
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= length; j++) {
+                        const newRow = row + j;
+                        const newCol = col + i;
+                        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE) {
+                            if (grid[newRow][newCol].hasShip) return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function placeShip(grid, row, col, length, horizontal) {
+            for (let i = 0; i < length; i++) {
+                if (horizontal) {
+                    grid[row][col + i].hasShip = true;
+                } else {
+                    grid[row + i][col].hasShip = true;
+                }
+            }
+            updateShipVisibility();
+        }
+
+        function makeMove(row, col) {
+            const targetGrid = gameMode === 'bot' ? 
+                             (currentPlayer === 1 ? enemyGrid : playerGrid) :
+                             (currentPlayer === 1 ? enemyGrid : playerGrid);
+
+            if (targetGrid[row][col].isHit) return;
+
+            targetGrid[row][col].isHit = true;
+            if (targetGrid[row][col].hasShip) {
+                targetGrid[row][col].element.classList.add('hit');
+                const ships = currentPlayer === 1 ? enemyShips : playerShips;
+                checkShipSunk(ships, row, col);
+                if (checkWin(targetGrid)) {
+                    updateMessage(`${gameMode === 'bot' ? 
+                        (currentPlayer === 1 ? 'Hai vinto!' : 'Il bot ha vinto!') : 
+                        'Il Giocatore ' + currentPlayer + ' ha vinto!'}`);
+                    return;
+                }
+            } else {
+                targetGrid[row][col].element.classList.add('miss');
+            }
+
+            updateShipVisibility();
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            if (gameMode === 'bot' && currentPlayer === 2) {
+                setTimeout(botMove, 1000);
+            } else {
+                updateMessage('Turno del Giocatore ' + currentPlayer);
+            }
+        }
+
+        function botMove() {
+            let row, col;
+            do {
+                row = Math.floor(Math.random() * GRID_SIZE);
+                col = Math.floor(Math.random() * GRID_SIZE);
+            } while (playerGrid[row][col].isHit);
+
+            makeMove(row, col);
+        }
+
+        function checkShipSunk(ships, hitRow, hitCol) {
+            for (const ship of ships) {
+                let hits = 0;
+                if (ship.horizontal) {
+                    for (let i = 0; i < ship.length; i++) {
+                        const col = ship.col + i;
+                        if (ship.row === hitRow && col === hitCol) {
+                            ship.hits++;
+                            if (ship.hits === ship.length) {
+                                showSunkMessage();
+                            }
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < ship.length; i++) {
+                        const row = ship.row + i;
+                        if (row === hitRow && ship.col === hitCol) {
+                            ship.hits++;
+                            if (ship.hits === ship.length) {
+                                showSunkMessage();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function showSunkMessage() {
+            const message = document.createElement('div');
+            message.textContent = 'NAVE AFFONDATA!';
+            message.className = 'sunk-message';
+            document.getElementById('messageBox').appendChild(message);
+            setTimeout(() => message.remove(), 2000);
+        }
+
+        function checkWin(grid) {
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    if (grid[i][j].hasShip && !grid[i][j].isHit) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function updateMessage(message) {
+            document.getElementById('messageBox').textContent = message;
+        }
+    </script>
+</body>
+</html>
